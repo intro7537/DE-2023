@@ -36,6 +36,7 @@ public class UBERStudent20191059
 		public String getDay()
 		{
 			String day = this.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.US);
+			if (day.equals( "Thu" )) day = "Thr";
 			return day.toUpperCase();
 		}
 	}
