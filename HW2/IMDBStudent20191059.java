@@ -128,14 +128,14 @@ public class IMDBStudent20191059 {
 			DoubleString outputKey = null;
 			Text outputValue = new Text();
 			if(movieFile) {
-				String movie_id = valSplited[0];
-				String movie_title = valSplited[1];
-				String movie_genre = valSplited[2];
+				String movie_id = valSplited[0].trim();
+				String movie_title = valSplited[1].trim();
+				String movie_genre = valSplited[2].trim();
 				
 				StringTokenizer itr = new StringTokenizer(movie_genre, "|");
 				boolean isFantasy = false;
-				while(itr.hasMoreElements()) {
-					if(itr.nextToken().equals("Fantasy")) {
+				while(itr.hasMoreTokens()) {
+					if( (itr.nextToken().trim()).equals("Fantasy")) {
 						isFantasy = true;
 						break;
 					}
@@ -143,16 +143,16 @@ public class IMDBStudent20191059 {
 				
 				if(isFantasy) {
 					outputKey = new DoubleString(movie_id, "M");
-					outputValue.set("M," + movie_title);
+					outputValue.set(movie_title);
 					context.write(outputKey, outputValue);
 				}	
 			}
 			else {
-				String movie_id = valSplited[1];
-				String movie_rate = valSplited[2];
+				String movie_id = valSplited[1].trim();
+				String movie_rate = valSplited[2].trim();
 				
 				outputKey = new DoubleString(movie_id, "R");
-				outputValue.set("R," + movie_rate);
+				outputValue.set(movie_rate);
 				context.write(outputKey, outputValue);
 			}
 		}
@@ -164,31 +164,29 @@ public class IMDBStudent20191059 {
 		}
 	}
 	
-	public static class IMDBReducer extends Reducer<DoubleString, Text, Text, DoubleWritable> {
+	public static class IMDBReducer extends Reducer<DoubleString, Text, Text, NullWritable> {
 		private PriorityQueue<Info> queue;
 		private Comparator<Info> comp = new AverageComparator();
 		private int topK;
 		public void reduce(DoubleString key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 			String movie_title = "";
-			int total_rate = 0;
-			int i = 0;
+			double total_rate = 0;
+			int cnt = 0;
 			
 			for(Text val : values) {
 				String data = val.toString();
-				String [] splited = data.split(",");
 				
-				if(i == 0) {
-					if(!splited[0].equals("M")) break;
-					movie_title = splited[1];
+				if(cnt == 0) {
+					movie_title = data;
 				}
 				else {
-					total_rate += Integer.valueOf(splited[1]);
+					total_rate += Double.parseDouble(data);
 				}
-				i++;
+				cnt++;
 			}
 			
 			if(total_rate != 0) {
-				double average = ((double) total_rate) / (i - 1);
+				double average = total_rate / (cnt - 1);
 				insertInfo(queue, movie_title, average, topK);
 			}
 		}
@@ -202,7 +200,7 @@ public class IMDBStudent20191059 {
 		protected void cleanup(Context context) throws IOException, InterruptedException {
 			while(queue.size() != 0) {
 				Info info = (Info) queue.remove();
-				context.write(new Text(info.getTitle()), new DoubleWritable(info.getAverage()));
+				context.write(new Text(info.getString()), NullWritable.get());
 			}
 		}
 	}
@@ -223,7 +221,7 @@ public class IMDBStudent20191059 {
 		job.setNumReduceTasks(1);	
 		
 		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(DoubleWritable.class);
+		job.setOutputValueClass(NullWritable.class);
 		
 		job.setMapOutputKeyClass(DoubleString.class);
 		job.setMapOutputValueClass(Text.class);
